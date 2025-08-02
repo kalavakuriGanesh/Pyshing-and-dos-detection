@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Security Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="dashboard-container">
+        <nav class="top-nav">
+            <div class="nav-content">
+                <h1>Network Security Dashboard</h1>
+                <div class="system-info">
+                    <span class="ai-status">AI-Powered Threat Detection</span>
+                    <div class="system-status">
+                        <span class="status-indicator {{ 'active' if stats.system_status == 'Active' else 'inactive' }}"></span>
+                        System Status: {{ stats.system_status }}
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <div class="stats-overview">
+            <div class="stat-card total-analyses">
+                <i class="fas fa-chart-line"></i>
+                <div class="stat-content">
+                    <h3>Total Analyses</h3>
+                    <p class="stat-number">{{ stats.total_analyses }}</p>
+                </div>
+            </div>
+            <div class="stat-card threats-detected">
+                <i class="fas fa-shield-alt"></i>
+                <div class="stat-content">
+                    <h3>Threats Detected</h3>
+                    <p class="stat-number">{{ stats.threats_detected }}</p>
+                </div>
+            </div>
+            <div class="stat-card detection-rate">
+                <i class="fas fa-percentage"></i>
+                <div class="stat-content">
+                    <h3>Detection Rate</h3>
+                    <p class="stat-number">
+                        {% if stats.total_analyses > 0 %}
+                            {{ (stats.threats_detected / stats.total_analyses * 100) | round(1) }}%
+                        {% else %}
+                            0%
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="analysis-section">
+                <div class="analysis-card phishing">
+                    <div class="card-header">
+                        <i class="fas fa-link"></i>
+                        <h2>Phishing Detection</h2>
+                    </div>
+                    <div class="card-body">
+                        <form action="{{ url_for('analyze_phishing') }}" method="post" class="analysis-form">
+                            <div class="input-group">
+                                <input type="text" id="url" name="url" required placeholder="Enter URL to analyze...">
+                                <button type="submit">
+                                    <i class="fas fa-search"></i>
+                                    Analyze
+                                </button>
+                            </div>
+                        </form>
+                        {% if phishing_result %}
+                        <div class="result-container {{ 'danger' if phishing_result.is_phishing else 'safe' }}">
+                            <div class="result-header">
+                                <h4>Analysis Result</h4>
+                                <span class="timestamp">{{ phishing_result.timestamp }}</span>
+                            </div>
+                            <div class="result-content">
+                                <p class="result-message">{{ phishing_result.message }}</p>
+                                <div class="confidence-bar">
+                                    <div class="progress">
+                                        <div class="progress-bar" role="progressbar" 
+                             style="width: {{ phishing_result.confidence }}%" 
+                             aria-valuenow="{{ phishing_result.confidence }}" 
+                             aria-valuemin="0" 
+                             aria-valuemax="100"></div>
+                                    </div>
+                                    <span class="confidence-label">Confidence: {{ phishing_result.confidence }}%</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="feature-analysis">
+                            <h4>Feature Analysis</h4>
+                            <div class="feature-grid">
+                                {% for feature in phishing_result.features %}
+                                <div class="feature-item">
+                                    <div class="feature-header">
+                                        <span class="feature-name">{{ feature.name }}</span>
+                                        <span class="feature-value">{{ (feature.importance * 100) | round(1) }}%</span>
+                                    </div>
+                                    <div class="feature-bar-container">
+                                        <div class="feature-bar" style="width: {{ feature.importance * 100 }}%"></div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="analysis-card ddos">
+                    <div class="card-header">
+                        <i class="fas fa-network-wired"></i>
+                        <h2>DDoS Detection</h2>
+                    </div>
+                    <div class="card-body">
+                        <form action="{{ url_for('analyze_ddos') }}" method="post" class="analysis-form">
+                            <div class="input-group">
+                                <input type="number" id="packet_rate" name="packet_rate" required placeholder="Enter packet rate...">
+                            </div>
+                            <div class="input-group">
+                                <input type="number" id="byte_rate" name="byte_rate" required placeholder="Enter byte rate...">
+                            </div>
+                            <button type="submit">
+                                <i class="fas fa-search"></i>
+                                Analyze
+                            </button>
+                        </form>
+                        {% if ddos_result %}
+                        <div class="result-container {{ 'danger' if ddos_result.attack_type != 'Normal' else 'safe' }}">
+                            <div class="result-header">
+                                <h4>Analysis Result</h4>
+                                <span class="timestamp">{{ ddos_result.timestamp }}</span>
+                            </div>
+                            <div class="result-content">
+                                <p class="result-message">{{ ddos_result.message }}</p>
+                                <p class="attack-type">Attack Type: <strong>{{ ddos_result.attack_type }}</strong></p>
+                                <div class="confidence-bar">
+                                    <div class="progress">
+                                        <div class="progress-bar" role="progressbar" 
+                             style="width: {{ ddos_result.confidence }}%" 
+                             aria-valuenow="{{ ddos_result.confidence }}" 
+                             aria-valuemin="0" 
+                             aria-valuemax="100"></div>
+                                    </div>
+                                    <span class="confidence-label">Confidence: {{ ddos_result.confidence }}%</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="analysis-card activity">
+                    <div class="card-header">
+                        <i class="fas fa-history"></i>
+                        <h2>Recent Activity</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="activity-feed">
+                            {% for log in recent_logs %}
+                            <div class="activity-item {{ log.threat_level }}">
+                                <div class="activity-icon">
+                                    <i class="fas fa-{{ 'shield-alt' if log.threat_level == 'danger' else 'check-circle' }}"></i>
+                                </div>
+                                <div class="activity-content">
+                                    <span class="activity-time">{{ log.timestamp }}</span>
+                                    <span class="activity-type">{{ log.type }}</span>
+                                    <p class="activity-details">{{ log.details }}</p>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="analysis-card dataset">
+                    <div class="card-header">
+                        <i class="fas fa-database"></i>
+                        <h2>Dataset Analysis</h2>
+                    </div>
+                    <div class="card-body">
+                        <form action="{{ url_for('analyze_dataset_route') }}" method="post" enctype="multipart/form-data" class="upload-form">
+                            <div class="input-group">
+                                <input type="file" id="dataset" name="dataset" accept=".csv" required>
+                                <button type="submit">
+                                    <i class="fas fa-chart-bar"></i>
+                                    Analyze Dataset
+                                </button>
+                            </div>
+                        </form>
+                        {% if session.get('dataset_analysis') %}
+                        <div class="dataset-analysis">
+                            <h4>Dataset Insights</h4>
+                            <div class="analysis-grid">
+                                <div class="insight-item">
+                                    <span class="insight-label">Total Samples:</span>
+                                    <span class="insight-value">{{ session.dataset_analysis.total_samples }}</span>
+               z                 </div>
+                                <div class="insight-item">
+                                    <span class="insight-label">Phishing Ratio:</span>
+                                    <span class="insight-value">{{ "%.2f"|format(session.dataset_analysis.phishing_ratio * 100) }}%</span>
+                                </div>
+                                <div class="insight-item">
+                                    <span class="insight-label">Features:</span>
+                                    <div class="feature-list">
+                                        {% for feature in session.dataset_analysis.feature_names %}
+                                        <span class="feature-tag">{{ feature }}</span>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="analysis-card training">
+                    <div class="card-header">
+                        <i class="fas fa-brain"></i>
+                        <h2>Model Training</h2>
+                    </div>
+                    <div class="card-body">
+                        <form action="{{ url_for('train_model_route') }}" method="post" enctype="multipart/form-data" class="upload-form">
+                            <div class="input-group">
+                                <input type="file" id="training_dataset" name="dataset" accept=".csv" required>
+                                <button type="submit">
+                                    <i class="fas fa-cogs"></i>
+                                    Train Model
+                                </button>
+                            </div>
+                        </form>
+                        {% if session.get('training_results') %}
+                        <div class="training-results">
+                            <h4>Training Results</h4>
+                            <div class="results-grid">
+                                <div class="result-item">
+                                    <span class="result-label">Model Accuracy:</span>
+                                    <span class="result-value">{{ "%.2f"|format(session.training_results.accuracy * 100) }}%</span>
+                                </div>
+                                <div class="result-item">
+                                    <span class="result-label">Last Training:</span>
+                                    <span class="result-value">{{ stats.last_training }}</span>
+                                </div>
+                                {% if session.training_results.feature_importance %}
+                                <div class="result-item full-width">
+                                    <span class="result-label">Feature Importance:</span>
+                                    <div class="importance-bars">
+                                        {% for feature, importance in session.training_results.feature_importance %}
+                                        <div class="importance-item">
+                                            <span class="feature-name">{{ feature }}</span>
+                                            <div class="importance-bar-container">
+                                                <div class="importance-bar" style="width: {{ importance * 100 }}%"></div>
+                                                <span class="importance-value">{{ "%.2f"|format(importance * 100) }}%</span>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                {% endif %}
+                                <div class="result-item full-width">
+                                    <span class="result-label">Confusion Matrix:</span>
+                                    <img src="{{ url_for('static', filename='confusion_matrix.png') }}" alt="Confusion Matrix" class="confusion-matrix">
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</body>
+</html>
